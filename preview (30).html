@@ -1,0 +1,1394 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#ffffff" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Room Audit" />
+  <title>Room Audit</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --surface: #ffffff;
+      --surface-soft: #f3fbfb;
+      --text: #004548;
+      --muted: #315c5f;
+      --line: rgba(0,69,72,.18);
+      --accent: #004548;
+      --accent-2: #00adb4;
+      --accent-warm: #fd4000;
+      --good: #2d7d46;
+      --warn: #b7791f;
+      --danger: #b83232;
+      --photo: #6b5ca5;
+      --shadow: 0 10px 24px rgba(0, 69, 72, .10);
+      --radius: 22px;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body { margin: 0; background: #ffffff; color: var(--text); }
+    button, input, textarea, select { font: inherit; }
+    button { border: 0; cursor: pointer; }
+    input, textarea, select {
+      width: 100%; border: 1px solid var(--line); border-radius: 16px; padding: 13px 14px;
+      background: var(--surface); color: var(--text); outline: none;
+    }
+    textarea { min-height: 112px; resize: vertical; }
+    .shell { max-width: 540px; min-height: 100vh; margin: 0 auto; background: var(--bg); box-shadow: 0 0 0 1px rgba(0,69,72,.12), 0 18px 45px rgba(0,69,72,.10); }
+    .app { min-height: 100vh; padding: 22px 16px calc(94px + var(--safe-bottom)); background: var(--bg); }
+    .topbar { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; margin-bottom: 18px; }
+    .brand h1 { margin: 0; font-size: 32px; letter-spacing: -.05em; line-height: 1; }
+    .brand p { margin: 8px 0 0; color: rgba(0,69,72,.72); font-size: 14px; line-height: 1.35; }
+    .pill { display: inline-flex; align-items: center; gap: 6px; padding: 9px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-soft); color: var(--muted); font-weight: 760; font-size: 13px; }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+    .panel { padding: 15px; }
+    .section-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 22px 3px 12px; }
+    .section-title { font-size: 20px; font-weight: 870; letter-spacing: -.035em; }
+    .small { color: var(--muted); font-size: 13px; line-height: 1.4; }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+    .stat { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 13px; box-shadow: 0 7px 16px rgba(0,69,72,.08); }
+    .stat strong { display: block; font-size: 24px; letter-spacing: -.04em; color: var(--accent); }
+    .stat span { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .filters { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    .room-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .room-btn { min-height: 76px; border-radius: 18px; border: 1px solid var(--line); background: var(--surface); color: var(--text); box-shadow: 0 7px 16px rgba(18,31,42,.06); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; }
+    .room-btn:active { transform: scale(.98); }
+    .room-number { font-size: 19px; font-weight: 880; letter-spacing: -.03em; }
+    .status-dot { width: 12px; height: 12px; border-radius: 999px; background: var(--line); }
+    .room-btn.visited, .room-btn.notes, .room-btn.photos { background: #eefaf1; border-color: #b7dfc1; }
+    .room-btn.visited .status-dot { background: var(--good); }
+    .room-btn.notes .status-dot { background: var(--warn); }
+    .room-btn.photos .status-dot { background: var(--photo); }
+    .room-btn.photos { border-color: color-mix(in srgb, var(--photo) 45%, var(--line)); }
+    .room-btn.missing { background: #fff1f1; border-color: #f2b8b8; }
+    .room-btn.missing .status-dot { background: var(--danger); }
+    .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .legend .pill::before { content: ""; width: 10px; height: 10px; border-radius: 999px; background: var(--dot, var(--line)); }
+    .list { display: flex; flex-direction: column; }
+    .row { display: grid; grid-template-columns: 1fr auto; gap: 12px; padding: 14px 15px; border-bottom: 1px solid var(--line); align-items: center; }
+    .row:last-child { border-bottom: 0; }
+    .row strong { display: block; font-size: 17px; letter-spacing: -.025em; }
+    .row .meta { color: var(--muted); font-size: 13px; margin-top: 3px; overflow-wrap: anywhere; }
+    .device-count-badge { min-width: 58px; min-height: 44px; border-radius: 16px; background: var(--accent-warm); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 900; box-shadow: 0 8px 16px rgba(253,64,0,.22); }
+    .device-count-row { grid-template-columns: 1fr auto; }
+    .thumbs { display: flex; gap: 6px; justify-content: flex-end; }
+    .thumbs img, .photo-preview img { width: 44px; height: 44px; object-fit: cover; border-radius: 12px; border: 1px solid var(--line); }
+    .btn { border-radius: 16px; padding: 13px 15px; font-weight: 820; background: var(--accent); color: #fff; }
+    .btn.secondary { background: var(--surface); color: var(--text); border: 1px solid var(--line); }
+    .btn.danger { background: #fff3f3; color: var(--danger); border: 1px solid #ffd0d0; }
+    .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+    .sheet-top-actions { display: grid; gap: 10px; margin: -2px 0 14px; }
+    .full { width: 100%; }
+    .nav { position: fixed; left: 50%; bottom: 0; transform: translateX(-50%); width: 100%; max-width: 540px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 8px 12px calc(9px + var(--safe-bottom)); background: var(--accent); backdrop-filter: blur(16px); border-top: 1px solid rgba(255,255,255,.18); z-index: 50; box-shadow: 0 -12px 26px rgba(0,69,72,.26); }
+    .nav button { background: transparent; color: rgba(255,255,255,.78); border-radius: 14px; padding: 8px 4px; font-weight: 750; font-size: 12px; }
+    .nav button.active { color: #fff; background: var(--accent-warm); box-shadow: 0 8px 18px rgba(253, 64, 0, .36); }
+    .sheet-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.36); opacity: 0; pointer-events: none; transition: .16s ease; z-index: 80; }
+    .sheet-backdrop.show { opacity: 1; pointer-events: auto; }
+    .sheet { position: fixed; left: 50%; bottom: 0; transform: translate(-50%, 110%); width: 100%; max-width: 540px; max-height: 92vh; overflow: auto; background: var(--surface); border-radius: 28px 28px 0 0; box-shadow: 0 -20px 45px rgba(0,0,0,.18); padding: 10px 16px calc(18px + var(--safe-bottom)); transition: .18s ease; z-index: 90; border: 1px solid var(--line); }
+    .sheet.show { transform: translate(-50%, 0); }
+    .handle { width: 46px; height: 5px; border-radius: 99px; background: var(--line); margin: 4px auto 18px; }
+    .sheet-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+    .sheet-title { font-size: 25px; font-weight: 900; letter-spacing: -.045em; }
+    .icon-btn { width: 42px; height: 42px; border-radius: 999px; background: var(--surface-soft); color: var(--text); font-size: 26px; }
+    .label { color: var(--muted); font-size: 12px; text-transform: uppercase; font-weight: 880; letter-spacing: .08em; margin: 16px 2px 9px; }
+    .chip-grid { display: flex; flex-wrap: wrap; gap: 9px; }
+    .chip { border: 1px solid var(--line); border-radius: 999px; padding: 10px 13px; background: var(--surface); color: var(--text); font-weight: 760; }
+    .chip.selected { background: var(--accent-warm); border-color: var(--accent-warm); color: #fff; box-shadow: 0 6px 14px rgba(253, 64, 0, .18); }
+
+    .device-qty-list { display: grid; gap: 10px; }
+    .device-qty-row { display: grid; grid-template-columns: 44px 1fr 72px 44px; gap: 8px; align-items: center; border: 1px solid var(--line); border-radius: 18px; padding: 10px; background: #fff; }
+    .device-qty-name { font-weight: 820; color: var(--accent); line-height: 1.2; }
+    .device-qty-input { text-align: center; padding: 10px 8px; border-radius: 12px; font-weight: 850; }
+    .qty-btn { width: 44px; height: 44px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-soft); color: var(--accent); font-size: 22px; font-weight: 900; display: inline-flex; align-items: center; justify-content: center; }
+    .qty-btn.plus { background: var(--accent-warm); border-color: var(--accent-warm); color: #fff; }
+    .photo-preview { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .photo-preview figure { margin: 0; position: relative; }
+    .photo-preview img { width: 76px; height: 76px; border-radius: 16px; }
+    .photo-preview button { position: absolute; top: -7px; right: -7px; width: 24px; height: 24px; border-radius: 999px; background: var(--danger); color: #fff; font-size: 16px; }
+    .camera-input { position: fixed; left: -9999px; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+    .photo-capture-row { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 8px; }
+    .toast { position: fixed; left: 50%; bottom: calc(86px + var(--safe-bottom)); transform: translateX(-50%) translateY(12px); background: #14212a; color: #fff; padding: 11px 15px; border-radius: 999px; opacity: 0; pointer-events: none; transition: .16s ease; z-index: 120; font-weight: 800; max-width: calc(100% - 28px); text-align: center; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .export-box { display: grid; gap: 10px; }
+    .warning { border-left: 4px solid var(--warn); padding: 12px; background: #fff8ec; border-radius: 14px; color: #4b3512; font-size: 13px; line-height: 1.4; }
+    .empty { padding: 20px; text-align: center; color: var(--muted); }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .form-row { margin-top: 12px; }
+    .setup-pill-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; margin-top: 8px; }
+    .setup-pill-row .chip { justify-content: center; }
+    .area-card { border: 1px solid var(--line); border-radius: 18px; padding: 12px; background: var(--surface); margin-top: 10px; box-shadow: 0 7px 16px rgba(0,69,72,.08); }
+    .area-head { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-bottom: 10px; }
+    .area-title { font-weight: 880; letter-spacing: -.025em; }
+    .checkline { display:flex; align-items:center; gap:10px; padding:12px; border:1px solid var(--line); border-radius:16px; background:var(--surface); margin-top:12px; font-weight:760; }
+    .checkline input { width:auto; transform:scale(1.15); }
+    .missing-toggle { margin-top: 16px; border: 1px solid #f2b8b8; background: #fff1f1; color: var(--danger); }
+    .missing-toggle.selected { background: var(--danger); border-color: var(--danger); color: #fff; }
+    .inline-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    @media (max-width: 390px) { .room-grid { grid-template-columns: repeat(3, 1fr); } .stats { grid-template-columns: 1fr 1fr; } }
+
+
+    /* White background + dark teal Room Audit palette */
+    .section-title, .brand h1, .sheet-title, .row strong, .area-title { color: var(--accent); }
+    .pill { background: var(--surface-soft); color: var(--accent); border-color: rgba(0,69,72,.16); }
+    .card, .sheet, input, textarea, select, .checkline, .room-btn, .chip, .btn.secondary { background: #fff; }
+    .btn:not(.secondary):not(.danger), .save-btn { background: var(--accent); color: #fff; }
+    .btn:focus-visible, .chip:focus-visible, .room-btn:focus-visible, .nav button:focus-visible { outline: 3px solid rgba(253,64,0,.45); outline-offset: 2px; }
+    .chip.selected, .nav button.active { background: var(--accent-warm); border-color: var(--accent-warm); }
+    .room-btn { border-color: rgba(0,69,72,.2); }
+    .room-btn.visited, .room-btn.notes, .room-btn.photos { background: #eefaf1; border-color: #9ed5ae; }
+    .room-btn.missing { background: #fff1f1; border-color: #f2b8b8; }
+
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <main class="app">
+      <section id="screenSetup"></section>
+      <section id="screenRooms" hidden></section>
+      <section id="screenRecords" hidden></section>
+      <section id="screenExport" hidden></section>
+    </main>
+  </div>
+
+  <nav class="nav">
+    <button data-tab="setup" class="active">Setup</button>
+    <button data-tab="rooms">Rooms</button>
+    <button data-tab="records">Device Counts</button>
+    <button data-tab="export">Export</button>
+  </nav>
+
+  <div id="sheetBackdrop" class="sheet-backdrop"></div>
+  <div id="sheet" class="sheet"></div>
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const DB_NAME = 'room_audit_clean_v1';
+    const DB_VERSION = 1;
+    const SETTINGS_KEY = 'room_audit_clean_settings_v1';
+    const FALLBACK_RECORDS_KEY = 'room_audit_clean_records_fallback_v1';
+    const FALLBACK_PHOTOS_KEY = 'room_audit_clean_photos_fallback_v1';
+    const DEFAULT_DEVICE_TYPES = ['Bedside Call Cord', 'Bathroom Pull Cord', 'Shower Pull Cord', 'Pendant'];
+    const REMOVED_DEVICE_TYPES = ['Bed'];
+
+    const DEFAULT_SETTINGS = {
+      auditName: 'Senior Living Room Audit',
+      roomPrefix: '',
+      roomSuffix: '',
+      careAreas: [],
+      equipmentChips: [...DEFAULT_DEVICE_TYPES],
+      semiPrivateRooms: [],
+      privateRoomOverrides: [],
+      customRooms: []
+    };
+
+    let db;
+    let tab = 'setup';
+    let records = [];
+    let recordByRoom = new Map();
+    let pendingPhotos = [];
+    let savedPhotoPreviewHtml = '';
+    let settings;
+    let selectedWing;
+
+    const $ = (s) => document.querySelector(s);
+    const $$ = (s) => Array.from(document.querySelectorAll(s));
+    const uuid = () => (globalThis.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'id-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+    const escapeHtml = (str) => String(str ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
+    const byRoomNumber = (a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
+    const uniqueClean = (items) => Array.from(new Set((items || []).map(x => String(x || '').trim()).filter(Boolean)));
+    const activeRecords = () => records.filter(r => !r.deletedAt).sort((a,b) => byRoomNumber(a.room, b.room));
+    const getActiveRecord = (room) => recordByRoom.get(String(room)) || null;
+
+    function normalizeDeviceCounts(value, fallbackEquipment = []) {
+      const counts = {};
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        Object.entries(value).forEach(([device, qty]) => {
+          const clean = String(device || '').trim();
+          const count = Math.max(0, Number(qty) || 0);
+          if (clean && count > 0) counts[clean] = (counts[clean] || 0) + count;
+        });
+      }
+      if (!Object.keys(counts).length && Array.isArray(fallbackEquipment)) {
+        fallbackEquipment.forEach(device => {
+          const clean = String(device || '').trim();
+          if (clean) counts[clean] = Math.max(1, counts[clean] || 0);
+        });
+      }
+      return counts;
+    }
+
+    function deviceCountsFromRecord(record) {
+      return normalizeDeviceCounts(record?.deviceCounts, record?.equipment);
+    }
+
+    function deviceListFromCounts(counts) {
+      return Object.entries(normalizeDeviceCounts(counts))
+        .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }))
+        .map(([device, qty]) => qty > 1 ? `${device} (${qty})` : device);
+    }
+
+    function deviceTotalFromCounts(counts) {
+      return Object.values(normalizeDeviceCounts(counts)).reduce((sum, qty) => sum + qty, 0);
+    }
+
+    settings = loadSettings();
+    selectedWing = (settings.careAreas && settings.careAreas[0] && settings.careAreas[0].name) || '';
+
+    function loadSettings() {
+      try {
+        const stored = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+        return normalizeSettings(stored);
+      } catch {
+        return normalizeSettings(DEFAULT_SETTINGS);
+      }
+    }
+
+    function normalizeEquipmentChips(chips) {
+      const removed = new Set(REMOVED_DEVICE_TYPES.map(x => x.toLowerCase()));
+      const source = Array.isArray(chips) ? chips : DEFAULT_DEVICE_TYPES;
+      return uniqueClean(source).filter(x => !removed.has(x.toLowerCase()));
+    }
+
+    function normalizeSettings(raw = {}) {
+      // Care settings intentionally start empty. Do not seed placeholder wings/areas
+      // from legacy defaults or old wing-name fields; areas should only exist after
+      // the user explicitly adds them in Setup.
+      const sourceAreas = Array.isArray(raw.careAreas) ? raw.careAreas : [];
+      const careAreas = sourceAreas.map((area, index) => {
+        const fallbackStart = Number(raw.startRoom) || 101;
+        const start = Number(area.startRoom) || fallbackStart;
+        const end = Number(area.endRoom) || start;
+        return {
+          id: area.id || ('area-' + Date.now() + '-' + index),
+          name: String(area.name || `Area ${index + 1}`).trim() || `Area ${index + 1}`,
+          startRoom: Math.min(start, end),
+          endRoom: Math.max(start, end),
+          prefix: String(area.prefix ?? raw.roomPrefix ?? '').trim(),
+          suffix: String(area.suffix ?? raw.roomSuffix ?? '').trim(),
+          splitAllSemiPrivate: !!area.splitAllSemiPrivate
+        };
+      });
+      return {
+        ...DEFAULT_SETTINGS,
+        ...raw,
+        auditName: String(raw.auditName || DEFAULT_SETTINGS.auditName).trim() || DEFAULT_SETTINGS.auditName,
+        careAreas,
+        wingNames: careAreas.map(a => a.name),
+        equipmentChips: normalizeEquipmentChips(raw.equipmentChips),
+        semiPrivateRooms: uniqueClean(raw.semiPrivateRooms),
+        privateRoomOverrides: uniqueClean(raw.privateRoomOverrides),
+        customRooms: Array.isArray(raw.customRooms) ? raw.customRooms.map((room, index) => ({
+          id: room.id || ('custom-room-' + Date.now() + '-' + index),
+          label: String(room.label || room.name || '').trim(),
+          wing: String(room.wing || room.area || careAreas[0]?.name || '').trim()
+        })).filter(room => room.label) : []
+      };
+    }
+
+    function saveSettings() {
+      settings = normalizeSettings(settings);
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    }
+
+    function roomSortNumber(label) {
+      const match = String(label || '').match(/\d+/);
+      return match ? Number(match[0]) : Number.MAX_SAFE_INTEGER;
+    }
+
+    function generatedRooms() {
+      const rooms = [];
+      const splitSet = new Set(settings.semiPrivateRooms || []);
+      const privateOverrides = new Set(settings.privateRoomOverrides || []);
+      (settings.careAreas || []).forEach(area => {
+        const start = Number(area.startRoom);
+        const end = Number(area.endRoom);
+        for (let n = start; n <= end; n++) {
+          const label = `${area.prefix || ''}${n}${area.suffix || ''}`;
+          const splitByArea = !!area.splitAllSemiPrivate && !privateOverrides.has(label);
+          if (splitSet.has(label) || splitByArea) {
+            rooms.push({ label: `${label} A`, number: n, wing: area.name, semiPrivateBase: label, semiPrivateSide: 'A', splitByArea });
+            rooms.push({ label: `${label} B`, number: n, wing: area.name, semiPrivateBase: label, semiPrivateSide: 'B', splitByArea });
+          } else {
+            rooms.push({ label, number: n, wing: area.name });
+          }
+        }
+      });
+      (settings.customRooms || []).forEach(room => {
+        if (!room.label) return;
+        rooms.push({
+          label: room.label,
+          number: roomSortNumber(room.label),
+          wing: room.wing || selectedWing || settings.careAreas?.[0]?.name || '',
+          custom: true
+        });
+      });
+      return rooms;
+    }
+
+
+    function openDb() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, DB_VERSION);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains('records')) db.createObjectStore('records', { keyPath: 'id' });
+          if (!db.objectStoreNames.contains('photos')) db.createObjectStore('photos', { keyPath: 'id' });
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function fallbackKey(store) { return store === 'photos' ? FALLBACK_PHOTOS_KEY : FALLBACK_RECORDS_KEY; }
+    function fallbackRead(store) {
+      try { return JSON.parse(localStorage.getItem(fallbackKey(store)) || '[]'); }
+      catch { return []; }
+    }
+    function fallbackWrite(store, rows) { localStorage.setItem(fallbackKey(store), JSON.stringify(rows || [])); }
+    function tx(store, mode='readonly') { return db.transaction(store, mode).objectStore(store); }
+    function getAll(store) {
+      if (!db) return Promise.resolve(fallbackRead(store));
+      return new Promise((resolve, reject) => { const r = tx(store).getAll(); r.onsuccess = () => resolve(r.result || []); r.onerror = () => reject(r.error); });
+    }
+    async function put(store, value) {
+      if (!db) {
+        const rows = fallbackRead(store);
+        const next = { ...value };
+        if (store === 'photos' && next.blob) {
+          next.dataUrl = await blobToDataUrl(next.blob);
+          delete next.blob;
+        }
+        const index = rows.findIndex(item => item.id === next.id);
+        if (index >= 0) rows[index] = next; else rows.push(next);
+        fallbackWrite(store, rows);
+        return next;
+      }
+      return new Promise((resolve, reject) => { const r = tx(store, 'readwrite').put(value); r.onsuccess = () => resolve(value); r.onerror = () => reject(r.error); });
+    }
+    function clearStore(store) {
+      if (!db) { fallbackWrite(store, []); return Promise.resolve(); }
+      return new Promise((resolve, reject) => { const r = tx(store, 'readwrite').clear(); r.onsuccess = resolve; r.onerror = () => reject(r.error); });
+    }
+
+    async function loadRecords() {
+      records = await getAll('records');
+      records.sort((a,b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+      recordByRoom = new Map(activeRecords().map(record => [String(record.room), record]));
+    }
+
+    function roomStatus(room) {
+      const record = getActiveRecord(room);
+      if (!record) return 'not-started';
+      if (record.roomDoesNotExist) return 'missing';
+      if ((record.photoIds || []).length) return 'photos';
+      if ((record.notes || '').trim() || deviceTotalFromCounts(deviceCountsFromRecord(record)) > 0) return 'notes';
+      return 'visited';
+    }
+
+    function statusLabel(status) {
+      return { 'not-started':'Not started', visited:'Visited', notes:'Notes', photos:'Photos', missing:"Doesn't exist" }[status] || status;
+    }
+
+
+    function roomStatusRank(status) {
+      // Group rooms as: not started first, visited/data added second, doesn't exist last.
+      if (status === 'not-started') return 0;
+      if (status === 'missing') return 2;
+      return 1;
+    }
+
+    function compareRoomsForDisplay(a, b) {
+      const statusDiff = roomStatusRank(roomStatus(a.label)) - roomStatusRank(roomStatus(b.label));
+      if (statusDiff) return statusDiff;
+      const numDiff = Number(a.number) - Number(b.number);
+      if (numDiff) return numDiff;
+      return String(a.label).localeCompare(String(b.label), undefined, { numeric: true, sensitivity: 'base' });
+    }
+
+    function countRooms(scopeWing = null) {
+      return generatedRooms()
+        .filter(room => !scopeWing || room.wing === scopeWing)
+        .reduce((totals, roomObj) => {
+          const status = roomStatus(roomObj.label);
+          totals.total += 1;
+          if (status !== 'not-started') totals.visited += 1;
+          if (status === 'photos') totals.withPhotos += 1;
+          if (status === 'missing') totals.missing += 1;
+          totals.remaining = totals.total - totals.visited;
+          return totals;
+        }, { total: 0, visited: 0, remaining: 0, withPhotos: 0, missing: 0 });
+    }
+
+    function ensureSelectedArea() {
+      const areas = (settings.careAreas || []).map(a => a.name).filter(Boolean);
+      if (!areas.length) { selectedWing = ''; return; }
+      if (!areas.includes(selectedWing)) selectedWing = areas[0];
+    }
+
+    function statsHtml(c) {
+      return `<div class="stats">
+        <div class="stat"><strong>${c.visited}</strong><span>audited</span></div>
+        <div class="stat"><strong>${c.remaining}</strong><span>remaining</span></div>
+        <div class="stat"><strong>${c.withPhotos}</strong><span>with photos</span></div>
+        <div class="stat"><strong>${c.missing}</strong><span>don't exist</span></div>
+      </div>`;
+    }
+
+    function render() {
+      $('#screenSetup').hidden = tab !== 'setup';
+      $('#screenRooms').hidden = tab !== 'rooms';
+      $('#screenRecords').hidden = tab !== 'records';
+      $('#screenExport').hidden = tab !== 'export';
+      $$('.nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+      ({ setup: renderSetup, rooms: renderRooms, records: renderDeviceCounts, export: renderExport }[tab] || renderSetup)();
+    }
+
+    function renderTop(title, subtitle) {
+      return `<div class="topbar"><div class="brand"><h1>${escapeHtml(title)}</h1><p>${escapeHtml(subtitle)}</p></div></div>`;
+    }
+
+    function renderSetup() {
+      $('#screenSetup').innerHTML = `
+        ${renderTop('Setup', 'Name the audit, build the care areas, and customize the equipment quick chips.')}
+
+        <div class="section-head"><div class="section-title">Audit Name</div></div>
+        <div class="card panel">
+          <div class="form-row"><label class="small">Audit name<input id="auditNameInput" value="${escapeHtml(settings.auditName)}" placeholder="Example: 2nd Floor Equipment Audit"></label></div>
+          <button class="btn full" style="margin-top:12px;" id="saveAuditNameBtn">Save Audit Name</button>
+        </div>
+
+        <div class="section-head"><div class="section-title">Wings / Care Settings / Areas</div><button class="btn secondary" id="addAreaBtn">+ Wing/Care Setting/Area</button></div>
+        <div class="card panel">
+          <div class="small">Create each area you’re auditing, then set that area’s starting and ending room numbers. Prefix/suffix are optional and can be different for each area.</div>
+          <div id="areaSetupList">
+            ${(settings.careAreas || []).map((area, i) => areaSetupHtml(area, i)).join('')}
+          </div>
+          <button class="btn full" style="margin-top:12px;" id="saveAreasBtn">Save Areas</button>
+        </div>
+
+        <div class="section-head"><div class="section-title">Device / Equipment Quick Options</div></div>
+        <div class="card panel">
+          <div class="small">These device/equipment pills show up when visiting a room. Add, remove, or reset them for each audit.</div>
+          <div id="equipmentSetupList" style="margin-top:12px;">
+            ${settings.equipmentChips.map((chip, i) => `
+              <div class="setup-pill-row">
+                <span class="chip">${escapeHtml(chip)}</span>
+                <button type="button" class="btn danger" data-remove-equipment="${i}" style="padding:10px 12px;">Remove</button>
+              </div>`).join('')}
+          </div>
+          <div class="form-grid form-row">
+            <input id="newEquipmentInput" placeholder="Add custom device type">
+            <button class="btn secondary" id="addEquipmentBtn">Add</button>
+          </div>
+          <div class="inline-actions">
+            <button class="btn secondary" id="resetEquipmentBtn">Restore Device Types to Default</button>
+          </div>
+        </div>`;
+
+      $('#saveAuditNameBtn').addEventListener('click', saveAuditNameFromForm);
+      $('#saveAreasBtn').addEventListener('click', saveSetupFromForm);
+      $('#addAreaBtn').addEventListener('click', addCareArea);
+      $('#addEquipmentBtn').addEventListener('click', addEquipmentChip);
+      $('#newEquipmentInput').addEventListener('keydown', e => { if (e.key === 'Enter') addEquipmentChip(); });
+      $('#resetEquipmentBtn').addEventListener('click', () => { settings.equipmentChips = [...DEFAULT_DEVICE_TYPES]; saveSettings(); renderSetup(); toast('Default device types restored'); });
+      $$('[data-remove-area]').forEach(btn => btn.addEventListener('click', () => removeCareArea(Number(btn.dataset.removeArea))));
+      $$('[data-remove-equipment]').forEach(btn => btn.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const index = Number(btn.dataset.removeEquipment);
+        const deviceName = settings.equipmentChips?.[index] || 'this device type';
+        const ok = confirm(`Remove ${deviceName}?\n\nThis removes it from future quick options and from the Device Counts list. Existing room records that already include it will keep that saved audit data.`);
+        if (!ok) return;
+        settings.equipmentChips = (settings.equipmentChips || []).filter((_, i) => i !== index);
+        saveSettings();
+        renderSetup();
+        renderDeviceCounts();
+        toast(`${deviceName} removed`);
+      }));
+    }
+
+    function areaSetupHtml(area, i) {
+      return `<div class="area-card" data-area-index="${i}">
+        <div class="area-head"><button type="button" class="btn danger" data-remove-area="${i}" style="padding:9px 11px;">Remove</button></div>
+        <div class="form-row"><label class="small">Wing / care setting / area name<input data-area-name value="${escapeHtml(area.name)}" placeholder="Example: Assisted Living East"></label></div>
+        <label class="checkline"><input data-area-split-all type="checkbox" ${area.splitAllSemiPrivate ? 'checked' : ''}> <span>Split rooms into semi-private rooms</span></label>
+        <div class="small" style="margin:6px 0 12px 30px; line-height:1.35;">If a room is private, you can combine it back while logging the audit.</div>
+        <div class="form-grid form-row">
+          <label class="small">Starting room<input data-area-start type="number" inputmode="numeric" value="${escapeHtml(area.startRoom)}"></label>
+          <label class="small">Ending room<input data-area-end type="number" inputmode="numeric" value="${escapeHtml(area.endRoom)}"></label>
+        </div>
+        <div class="form-grid form-row">
+          <label class="small">Room prefix<input data-area-prefix value="${escapeHtml(area.prefix || '')}" placeholder="Example: A-"></label>
+          <label class="small">Room suffix<input data-area-suffix value="${escapeHtml(area.suffix || '')}" placeholder="Example: B"></label>
+        </div>
+      </div>`;
+    }
+
+    function saveAuditNameFromForm() {
+      settings.auditName = $('#auditNameInput').value.trim() || DEFAULT_SETTINGS.auditName;
+      saveSettings();
+      renderSetup();
+      toast('Audit name saved');
+    }
+
+    function saveSetupFromForm() {
+      const areas = $$('[data-area-index]').map((card, i) => {
+        const start = Number(card.querySelector('[data-area-start]').value) || 1;
+        const end = Number(card.querySelector('[data-area-end]').value) || start;
+        return {
+          id: settings.careAreas?.[i]?.id || uuid(),
+          name: card.querySelector('[data-area-name]').value.trim() || `Area ${i + 1}`,
+          startRoom: Math.min(start, end),
+          endRoom: Math.max(start, end),
+          prefix: card.querySelector('[data-area-prefix]').value.trim(),
+          suffix: card.querySelector('[data-area-suffix]').value.trim(),
+          splitAllSemiPrivate: !!card.querySelector('[data-area-split-all]')?.checked
+        };
+      }).filter(Boolean);
+      settings.careAreas = areas;
+      settings.wingNames = settings.careAreas.map(a => a.name);
+      saveSettings();
+      ensureSelectedArea();
+      renderSetup();
+      toast('Areas saved');
+    }
+
+    function addCareArea() {
+      const areas = settings.careAreas || [];
+      const last = areas[areas.length - 1] || { startRoom: 100, endRoom: 100, prefix: '', suffix: '' };
+      settings.careAreas.push({
+        id: uuid(),
+        name: '',
+        startRoom: Number(last.endRoom || last.startRoom || 100) + 1,
+        endRoom: Number(last.endRoom || last.startRoom || 100) + 12,
+        prefix: last.prefix || '',
+        suffix: last.suffix || '',
+        splitAllSemiPrivate: false
+      });
+      saveSettings();
+      renderSetup();
+    }
+
+    function removeCareArea(index) {
+      const area = settings.careAreas[index];
+      const areaName = area?.name || `Area ${index + 1}`;
+      const ok = confirm(`Remove ${areaName}?
+
+This removes the area from Setup and the generated room list. Existing saved room records are not deleted, but rooms from this area will no longer appear unless you add the area back.`);
+      if (!ok) return;
+      settings.careAreas.splice(index, 1);
+      settings.wingNames = settings.careAreas.map(a => a.name);
+      saveSettings();
+      ensureSelectedArea();
+      renderSetup();
+      renderRooms();
+      toast(`${areaName} removed`);
+    }
+
+    function addEquipmentChip() {
+      const value = $('#newEquipmentInput').value.trim();
+      if (!value) return;
+      if (!settings.equipmentChips.some(x => x.toLowerCase() === value.toLowerCase())) settings.equipmentChips.push(value);
+      saveSettings();
+      renderSetup();
+      toast('Equipment added');
+    }
+
+    function renderRooms() {
+      ensureSelectedArea();
+      if (!(settings.careAreas || []).length) {
+        $('#screenRooms').innerHTML = `
+          ${renderTop(settings.auditName || 'Room Audit', 'Set up at least one care setting / area before auditing rooms.')}
+          <div class="card panel empty">
+            <strong>No care settings set up yet.</strong><br>
+            <span class="small">Go to Setup and tap + Wing/Care Setting/Area to create your first area.</span>
+            <button class="btn full" style="margin-top:14px;" id="goSetupFromRoomsBtn">Go to Setup</button>
+          </div>`;
+        $('#goSetupFromRoomsBtn').addEventListener('click', () => { tab = 'setup'; render(); });
+        return;
+      }
+      const fullCounts = countRooms(null);
+      const areaCounts = countRooms(selectedWing);
+      const rooms = generatedRooms().filter(r => r.wing === selectedWing).sort(compareRoomsForDisplay);
+      const areaOptions = (settings.careAreas || []).map(a => a.name);
+      $('#screenRooms').innerHTML = `
+        ${renderTop(settings.auditName || 'Room Audit', 'Tap a room, add equipment notes, snap photos, and save locally until export.')}
+        <div class="section-head" style="margin-top:0;"><div class="section-title">Full Audit</div></div>
+        ${statsHtml(fullCounts)}
+        <div class="section-head" style="margin-top:12px;"><div class="section-title">Current Area: ${escapeHtml(selectedWing)}</div></div>
+        ${statsHtml(areaCounts)}
+        <div class="card panel">
+          <div class="filters">
+            <label class="small">Care setting / area
+              <select id="wingSelect">${areaOptions.map(w => `<option ${selectedWing===w?'selected':''}>${escapeHtml(w)}</option>`).join('')}</select>
+            </label>
+          </div>
+        </div>
+        <div class="section-head"><div class="section-title">Rooms in ${escapeHtml(selectedWing)}</div><button class="btn secondary" id="addRoomBtn">Add New Room</button></div>
+        <div class="room-grid">
+          ${rooms.map(roomObj => {
+            const room = roomObj.label;
+            const status = roomStatus(room);
+            return `<button class="room-btn ${status}" data-room="${escapeHtml(room)}" data-wing="${escapeHtml(roomObj.wing)}" aria-label="Room ${escapeHtml(room)}, ${statusLabel(status)}"><span class="room-number">${escapeHtml(room)}</span><span class="status-dot"></span><span class="small">${escapeHtml(roomObj.wing)}</span></button>`;
+          }).join('')}
+        </div>
+        <div class="legend">
+          <span class="pill" style="--dot: var(--line)">Not started</span>
+          <span class="pill" style="--dot: var(--good)">Visited</span>
+          <span class="pill" style="--dot: var(--warn)">Notes</span>
+          <span class="pill" style="--dot: var(--photo)">Photos</span>
+          <span class="pill" style="--dot: var(--danger)">Doesn't exist</span>
+        </div>`;
+      $('#wingSelect').addEventListener('change', e => { selectedWing = e.target.value; renderRooms(); });
+      $('#addRoomBtn').addEventListener('click', openAddRoomSheet);
+      $$('.room-btn').forEach(btn => btn.addEventListener('click', () => { selectedWing = btn.dataset.wing || selectedWing; openRoomSheet(btn.dataset.room); }));
+    }
+
+    function deviceCountData() {
+      const configuredDevices = Array.isArray(settings.equipmentChips) ? settings.equipmentChips : [];
+      const deviceOrder = [];
+      const deviceMap = new Map();
+
+      configuredDevices.forEach(device => {
+        const clean = String(device || '').trim();
+        if (!clean) return;
+        const key = clean.toLowerCase();
+        if (!deviceMap.has(key)) {
+          deviceMap.set(key, { device: clean, count: 0, rooms: [] });
+          deviceOrder.push(key);
+        }
+      });
+
+      activeRecords().forEach(record => {
+        Object.entries(deviceCountsFromRecord(record)).forEach(([device, qty]) => {
+          const clean = String(device || '').trim();
+          const count = Math.max(0, Number(qty) || 0);
+          if (!clean || count <= 0) return;
+          const key = clean.toLowerCase();
+          if (!deviceMap.has(key)) {
+            deviceMap.set(key, { device: clean, count: 0, rooms: [] });
+            deviceOrder.push(key);
+          }
+          const item = deviceMap.get(key);
+          item.count += count;
+          item.rooms.push(count > 1 ? `${record.room} (${count})` : record.room);
+        });
+      });
+
+      return deviceOrder.map(key => {
+        const item = deviceMap.get(key);
+        item.rooms = Array.from(new Set(item.rooms)).sort((a,b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
+        return item;
+      });
+    }
+
+    function renderDeviceCounts() {
+      const data = deviceCountData();
+      const rows = data.map(item => `
+        <div class="row device-count-row">
+          <span>
+            <strong>${escapeHtml(item.device)}</strong>
+            <span class="meta">${item.rooms.length ? `Recorded in rooms: ${escapeHtml(item.rooms.join(', '))}` : 'Not recorded in any rooms yet'}</span>
+          </span>
+          <span class="device-count-badge" aria-label="${item.count} total devices">${item.count}</span>
+        </div>`).join('');
+
+      $('#screenRecords').innerHTML = `
+        ${renderTop('Device Counts', 'Total count for each device type recorded across all care settings.')}
+        <div class="section-head"><div class="section-title">Device Type Totals</div><button class="btn secondary" id="refreshBtn">Refresh</button></div>
+        <div class="card list">${rows || '<div class="empty">No device types configured yet. Add them in Setup.</div>'}</div>`;
+      $('#refreshBtn').addEventListener('click', async () => { await loadRecords(); renderDeviceCounts(); });
+    }
+
+    async function getPhotoUrl(id) {
+      const photo = await getPhotoRecord(id);
+      if (photo?.dataUrl) return photo.dataUrl;
+      return photo?.blob ? URL.createObjectURL(photo.blob) : '';
+    }
+
+    function renderExport() {
+      const c = countRooms(null);
+      $('#screenExport').innerHTML = `
+        ${renderTop('Export', 'Create a file when you are done or export by floor/wing for large audits.')}
+        <div class="card panel export-box">
+          <div class="stats">
+            <div class="stat"><strong>${records.filter(r=>!r.deletedAt).length}</strong><span>records</span></div>
+            <div class="stat"><strong>${c.withPhotos}</strong><span>rooms w/photos</span></div>
+            <div class="stat"><strong>${c.remaining}</strong><span>remaining</span></div>
+          </div>
+          <button class="btn full" id="xlsxExportBtn">Export Excel Workbook (.xlsx)</button>
+          <button class="btn secondary full" id="csvExportBtn">Export CSV</button>
+          <button class="btn secondary full" id="jsonExportBtn">Export JSON Backup</button>
+          <button class="btn secondary full" id="photoManifestBtn">Export Photo Manifest CSV</button>
+          <div class="warning"><strong>Excel export:</strong><br>The workbook includes Summary, Room Audit, Areas, Device Summary, and Photo Manifest sheets. Saved photos are embedded as thumbnails in the Room Audit sheet and listed in the manifest. Google Sheets can import the exported .xlsx file.</div>
+          <div class="warning" style="border-left-color: var(--danger); background:#fff3f3; color:#5b1d1d;"><strong>Local data stays after export.</strong><br>Use the clear button only after confirming your backup/export worked. You will need to type CLEAR before anything is deleted.</div>
+          <button class="btn danger full" id="clearBtn">Clear Local Audit Data</button>
+        </div>`;
+      $('#xlsxExportBtn').addEventListener('click', exportExcelWorkbook);
+      $('#csvExportBtn').addEventListener('click', exportCsv);
+      $('#jsonExportBtn').addEventListener('click', exportJson);
+      $('#photoManifestBtn').addEventListener('click', exportPhotoManifestCsv);
+      $('#clearBtn').addEventListener('click', clearAllData);
+    }
+
+    function openSheet(html) {
+      $('#sheet').innerHTML = `<div class="handle"></div>${html}`;
+      $('#sheetBackdrop').classList.add('show');
+      $('#sheet').classList.add('show');
+    }
+    function closeSheet() { $('#sheetBackdrop').classList.remove('show'); $('#sheet').classList.remove('show'); pendingPhotos = []; savedPhotoPreviewHtml = ''; }
+    $('#sheetBackdrop').addEventListener('click', closeSheet);
+
+    function isSemiPrivateSide(room) {
+      return /\s[AB]$/.test(String(room || '').trim());
+    }
+
+    function semiPrivateBase(room) {
+      return String(room || '').trim().replace(/\s[AB]$/, '');
+    }
+
+    function areaForBaseRoom(base) {
+      return (settings.careAreas || []).find(area => {
+        const start = Number(area.startRoom);
+        const end = Number(area.endRoom);
+        for (let n = start; n <= end; n++) {
+          if (`${area.prefix || ''}${n}${area.suffix || ''}` === base) return true;
+        }
+        return false;
+      }) || null;
+    }
+
+    function isAreaSplitBase(base) {
+      const area = areaForBaseRoom(base);
+      return !!area?.splitAllSemiPrivate && !(settings.privateRoomOverrides || []).includes(base);
+    }
+
+    function canCombineRoom(room) {
+      if (!isSemiPrivateSide(room)) return false;
+      const base = semiPrivateBase(room);
+      return (settings.semiPrivateRooms || []).includes(base) || isAreaSplitBase(base);
+    }
+
+    function roomHasAnyData(deviceCounts, notes, photoIds, newPhotos) {
+      return deviceTotalFromCounts(deviceCounts) > 0 || String(notes || '').trim().length > 0 || (photoIds || []).length > 0 || (newPhotos || []).length > 0;
+    }
+
+    function canSplitRoom(room) {
+      const baseRooms = generatedRooms().filter(r => !r.semiPrivateSide).map(r => r.label);
+      return baseRooms.includes(room) && !isSemiPrivateSide(room);
+    }
+
+    async function splitRoom(room, existing) {
+      if (!canSplitRoom(room)) {
+        toast('This room is already split or is outside the setup range');
+        return;
+      }
+      settings.semiPrivateRooms = Array.from(new Set([...(settings.semiPrivateRooms || []), room]));
+      settings.privateRoomOverrides = (settings.privateRoomOverrides || []).filter(x => x !== room);
+      saveSettings();
+
+      const now = new Date().toISOString();
+      const activeBaseRecords = activeRecords().filter(r => r.room === room);
+      for (const record of activeBaseRecords) {
+        await put('records', { ...record, room: `${room} A`, updatedAt: now });
+      }
+      await loadRecords();
+      closeSheet();
+      tab = 'rooms';
+      render();
+      toast(`Room ${room} split into ${room} A and ${room} B`);
+    }
+
+    async function combineRoom(room) {
+      if (!canCombineRoom(room)) {
+        toast('This room is not currently semi-private');
+        return;
+      }
+      const base = semiPrivateBase(room);
+      const sides = [`${base} A`, `${base} B`];
+      const now = new Date().toISOString();
+      const activeSideRecords = activeRecords().filter(r => sides.includes(r.room));
+      const existingBase = getActiveRecord(base);
+      const recordsToMerge = [existingBase, ...activeSideRecords].filter(Boolean);
+
+      settings.semiPrivateRooms = (settings.semiPrivateRooms || []).filter(x => x !== base);
+      if (areaForBaseRoom(base)?.splitAllSemiPrivate) {
+        settings.privateRoomOverrides = Array.from(new Set([...(settings.privateRoomOverrides || []), base]));
+      }
+      saveSettings();
+
+      if (recordsToMerge.length) {
+        const mergedDeviceCounts = {};
+        recordsToMerge.forEach(r => {
+          Object.entries(deviceCountsFromRecord(r)).forEach(([device, qty]) => {
+            mergedDeviceCounts[device] = (mergedDeviceCounts[device] || 0) + qty;
+          });
+        });
+        const mergedEquipment = Object.keys(mergedDeviceCounts);
+        const mergedPhotoIds = Array.from(new Set(recordsToMerge.flatMap(r => r.photoIds || [])));
+        const mergedNotes = recordsToMerge
+          .filter(r => String(r.notes || '').trim())
+          .map(r => recordsToMerge.length > 1 ? `${r.room}: ${String(r.notes).trim()}` : String(r.notes).trim())
+          .join('\n\n');
+        const createdAt = recordsToMerge
+          .map(r => r.createdAt)
+          .filter(Boolean)
+          .sort()[0] || now;
+        await put('records', {
+          id: existingBase?.id || uuid(),
+          room: base,
+          wing: selectedWing,
+          equipment: mergedEquipment,
+          deviceCounts: mergedDeviceCounts,
+          notes: mergedNotes,
+          photoIds: mergedPhotoIds,
+          roomDoesNotExist: recordsToMerge.some(r => r.roomDoesNotExist),
+          createdAt,
+          updatedAt: now,
+          deletedAt: null
+        });
+        for (const record of activeSideRecords) {
+          await put('records', { ...record, deletedAt: now, updatedAt: now });
+        }
+      }
+
+      await loadRecords();
+      closeSheet();
+      tab = 'rooms';
+      render();
+      toast(`Room ${base} combined into a private room`);
+    }
+
+
+    function openAddRoomSheet() {
+      if (!(settings.careAreas || []).length) {
+        toast('Set up a care setting / area first');
+        return;
+      }
+      openSheet(`
+        <div class="sheet-head">
+          <div><div class="sheet-title">Add New Room</div><div class="small">Add an unexpected room to the current care setting / area.</div></div>
+          <button class="icon-btn" id="closeSheetBtn">×</button>
+        </div>
+        <div class="label">Room name / number</div>
+        <input id="newRoomNameInput" placeholder="Example: 101 C, Therapy Room, Storage A">
+        <div class="label">Care setting / area</div>
+        <select id="newRoomAreaSelect">${(settings.careAreas || []).map(area => `<option ${selectedWing === area.name ? 'selected' : ''}>${escapeHtml(area.name)}</option>`).join('')}</select>
+        <div class="btn-row"><button class="btn secondary" id="cancelAddRoomBtn">Cancel</button><button class="btn" id="saveNewRoomBtn">Add Room</button></div>
+      `);
+      $('#closeSheetBtn').addEventListener('click', closeSheet);
+      $('#cancelAddRoomBtn').addEventListener('click', closeSheet);
+      $('#newRoomNameInput').focus();
+      $('#newRoomNameInput').addEventListener('keydown', e => { if (e.key === 'Enter') saveNewRoomFromSheet(); });
+      $('#saveNewRoomBtn').addEventListener('click', saveNewRoomFromSheet);
+    }
+
+    function saveNewRoomFromSheet() {
+      const label = $('#newRoomNameInput').value.trim();
+      const wing = $('#newRoomAreaSelect').value || selectedWing;
+      if (!label) {
+        toast('Enter a room name first');
+        return;
+      }
+      const duplicate = generatedRooms().some(room => String(room.label).toLowerCase() === label.toLowerCase() && room.wing === wing);
+      if (duplicate) {
+        toast('That room already exists in this area');
+        return;
+      }
+      settings.customRooms = [...(settings.customRooms || []), { id: uuid(), label, wing }];
+      selectedWing = wing;
+      saveSettings();
+      closeSheet();
+      renderRooms();
+      openRoomSheet(label);
+      toast('New room added');
+    }
+
+    async function openRoomSheet(room, recordId=null) {
+      const existing = recordId ? records.find(r => r.id === recordId && !r.deletedAt) : getActiveRecord(room);
+      pendingPhotos = [];
+      const currentDeviceCounts = deviceCountsFromRecord(existing);
+      const photoThumbs = existing?.photoIds?.length ? await Promise.all(existing.photoIds.map(getPhotoUrl)) : [];
+      savedPhotoPreviewHtml = photoThumbs.filter(Boolean).map(src => `<figure><img src="${src}" alt="Saved room photo"></figure>`).join('');
+      openSheet(`
+        <div class="sheet-head">
+          <div><div class="sheet-title">Room ${escapeHtml(room)}</div><div class="small">${escapeHtml(selectedWing)}</div></div>
+          <button class="icon-btn" id="closeSheetBtn">×</button>
+        </div>
+        ${(canSplitRoom(room) || canCombineRoom(room)) ? `<div class="sheet-top-actions">${canSplitRoom(room) ? `<button class="btn secondary full" id="splitRoomBtn">Split into Semi-Private Room</button>` : ''}${canCombineRoom(room) ? `<button class="btn secondary full" id="combineRoomBtn">Combine into Private Room</button>` : ''}</div>` : ''}
+        <div class="label">Device quantities</div>
+        <div class="device-qty-list">
+          ${settings.equipmentChips.length ? settings.equipmentChips.map(chip => {
+            const qty = currentDeviceCounts[chip] || 0;
+            return `<div class="device-qty-row" data-device-row data-device-name="${escapeHtml(chip)}">
+              <button class="qty-btn minus" type="button" data-qty-change="-1" aria-label="Remove one ${escapeHtml(chip)}">−</button>
+              <span class="device-qty-name">${escapeHtml(chip)}</span>
+              <input class="device-qty-input" type="number" min="0" step="1" inputmode="numeric" value="${qty}" aria-label="${escapeHtml(chip)} quantity">
+              <button class="qty-btn plus" type="button" data-qty-change="1" aria-label="Add one ${escapeHtml(chip)}">+</button>
+            </div>`;
+          }).join('') : '<div class="empty">No device types set up yet. Add device types on the Setup tab.</div>'}
+        </div>
+        <div class="label">Quick note</div>
+        <textarea id="notesInput" placeholder="Example: TV works, lift in closet, missing remote, needs new mattress...">${escapeHtml(existing?.notes || '')}</textarea>
+        <div class="label">Photos</div>
+        <input id="photoInput" class="camera-input" type="file" accept="image/*" capture="environment">
+        <div class="photo-capture-row">
+          <button class="btn secondary full" type="button" id="takePhotoBtn">Take Photo</button>
+          <div class="small">Tap <strong>Take Photo</strong> again to add multiple photos. Photos are compressed before being saved locally.</div>
+        </div>
+        <div id="photoPreview" class="photo-preview">${savedPhotoPreviewHtml}</div>
+        <button class="btn full missing-toggle ${existing?.roomDoesNotExist ? 'selected' : ''}" type="button" id="missingRoomBtn">Room doesn’t exist</button>
+        <div class="btn-row"><button class="btn secondary" id="cancelBtn">Cancel</button><button class="btn" id="saveBtn">Save Room</button></div>
+        ${existing ? `<button class="btn danger full" style="margin-top:10px;" id="deleteBtn">Delete Room Record</button>` : ''}`);
+      $('#closeSheetBtn').addEventListener('click', closeSheet);
+      $('#cancelBtn').addEventListener('click', closeSheet);
+      $$('[data-device-row] [data-qty-change]').forEach(btn => btn.addEventListener('click', () => {
+        const row = btn.closest('[data-device-row]');
+        const input = row.querySelector('.device-qty-input');
+        const next = Math.max(0, (Number(input.value) || 0) + Number(btn.dataset.qtyChange || 0));
+        input.value = String(next);
+      }));
+      $$('.device-qty-input').forEach(input => input.addEventListener('input', () => {
+        input.value = String(Math.max(0, Number(input.value) || 0));
+      }));
+      $('#takePhotoBtn').addEventListener('click', () => $('#photoInput').click());
+      $('#missingRoomBtn').addEventListener('click', () => $('#missingRoomBtn').classList.toggle('selected'));
+      $('#photoInput').addEventListener('change', handlePhotos);
+      $('#splitRoomBtn')?.addEventListener('click', () => splitRoom(room, existing));
+      $('#combineRoomBtn')?.addEventListener('click', () => combineRoom(room));
+      $('#saveBtn').addEventListener('click', () => saveRoom(room, existing));
+      $('#deleteBtn')?.addEventListener('click', () => deleteRecord(existing));
+    }
+
+    async function handlePhotos(e) {
+      const files = Array.from(e.target.files || []);
+      for (const file of files) {
+        const blob = await compressImage(file, 1400, .78);
+        pendingPhotos.push({ id: uuid(), blob, name: file.name || 'room-photo.jpg', createdAt: new Date().toISOString() });
+      }
+      renderPendingPhotoPreview();
+      e.target.value = '';
+    }
+
+    function renderPendingPhotoPreview() {
+      const pendingHtml = pendingPhotos.map(p => `<figure data-pending-id="${p.id}"><img src="${URL.createObjectURL(p.blob)}" alt="Pending photo"><button type="button" data-remove-photo="${p.id}">×</button></figure>`).join('');
+      $('#photoPreview').innerHTML = savedPhotoPreviewHtml + pendingHtml;
+      $$('[data-remove-photo]').forEach(btn => btn.addEventListener('click', () => {
+        pendingPhotos = pendingPhotos.filter(p => p.id !== btn.dataset.removePhoto);
+        renderPendingPhotoPreview();
+      }));
+    }
+
+    function compressImage(file, maxSize=1400, quality=.78) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        const objectUrl = URL.createObjectURL(file);
+        img.onload = () => {
+          URL.revokeObjectURL(objectUrl);
+          const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Could not compress image')), 'image/jpeg', quality);
+        };
+        img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Could not load image')); };
+        img.src = objectUrl;
+      });
+    }
+
+    async function saveRoom(room, existing) {
+      const now = new Date().toISOString();
+      const deviceCounts = {};
+      $$('[data-device-row]').forEach(row => {
+        const device = row.dataset.deviceName;
+        const qty = Math.max(0, Number(row.querySelector('.device-qty-input')?.value) || 0);
+        if (device && qty > 0) deviceCounts[device] = qty;
+      });
+      const equipment = Object.keys(deviceCounts);
+      const notes = $('#notesInput').value.trim();
+      const markedDoesNotExist = !!$('#missingRoomBtn')?.classList.contains('selected');
+      const existingPhotoIds = [...(existing?.photoIds || [])];
+      const hasRealRoomData = roomHasAnyData(deviceCounts, notes, existingPhotoIds, pendingPhotos);
+      const roomDoesNotExist = hasRealRoomData ? false : markedDoesNotExist;
+      if (!roomDoesNotExist && !hasRealRoomData) {
+        toast('Add a device quantity, a note, a photo, or mark the room as does not exist before saving');
+        return;
+      }
+      const photoIds = [...existingPhotoIds];
+      for (const p of pendingPhotos) {
+        await put('photos', p);
+        photoIds.push(p.id);
+      }
+      const record = {
+        id: existing?.id || uuid(),
+        room,
+        wing: selectedWing,
+        equipment,
+        deviceCounts,
+        notes,
+        photoIds,
+        roomDoesNotExist,
+        createdAt: existing?.createdAt || now,
+        updatedAt: now,
+        deletedAt: null
+      };
+      await put('records', record);
+      await loadRecords();
+      closeSheet();
+      render();
+      toast('Room saved locally');
+    }
+
+    async function deleteRecord(record) {
+      if (!record || !confirm('Delete this room record? Photos remain in local storage until local audit data is cleared.')) return;
+      await put('records', { ...record, deletedAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+      await loadRecords();
+      closeSheet();
+      render();
+      toast('Record deleted');
+    }
+
+    function download(filename, text, type='text/plain') {
+      const blob = new Blob([text], { type });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+
+    function csvEscape(v) { return '"' + String(v ?? '').replaceAll('"','""') + '"'; }
+
+    function columnLetter(n) {
+      let s = '';
+      while (n > 0) {
+        const m = (n - 1) % 26;
+        s = String.fromCharCode(65 + m) + s;
+        n = Math.floor((n - 1) / 26);
+      }
+      return s;
+    }
+
+    function setSheetColumns(ws, columns) {
+      ws.columns = columns.map(col => ({ header: col.header, key: col.key, width: col.width || 14 }));
+      ws.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF004548' } };
+      ws.getRow(1).alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      ws.getRow(1).height = 24;
+      ws.autoFilter = { from: 'A1', to: `${columnLetter(columns.length)}1` };
+      ws.views = [{ state: 'frozen', ySplit: 1 }];
+    }
+
+    function styleWorksheet(ws) {
+      ws.eachRow(row => {
+        row.eachCell(cell => {
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFE1ECEC' } },
+            left: { style: 'thin', color: { argb: 'FFE1ECEC' } },
+            bottom: { style: 'thin', color: { argb: 'FFE1ECEC' } },
+            right: { style: 'thin', color: { argb: 'FFE1ECEC' } }
+          };
+          cell.alignment = { vertical: 'top', wrapText: true };
+        });
+      });
+    }
+
+    function workbookDownload(buffer, filename) {
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      URL.revokeObjectURL(a.href);
+      a.remove();
+    }
+
+    function blobToDataUrl(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    function roomExportRows() {
+      return generatedRooms()
+        .slice()
+        .sort((a,b) => String(a.wing).localeCompare(String(b.wing), undefined, { numeric:true }) || compareRoomsForDisplay(a,b))
+        .map(roomObj => {
+          const r = getActiveRecord(roomObj.label);
+          const status = roomStatus(roomObj.label);
+          return {
+            room: roomObj.label,
+            area: roomObj.wing,
+            status: statusLabel(status),
+            exists: r?.roomDoesNotExist ? 'No' : 'Yes',
+            devices: deviceListFromCounts(deviceCountsFromRecord(r)).join('; '),
+            notes: r?.notes || '',
+            photoCount: (r?.photoIds || []).length,
+            photoIds: (r?.photoIds || []).join('; '),
+            updatedAt: r?.updatedAt ? new Date(r.updatedAt).toLocaleString() : '',
+            record: r,
+            roomObj
+          };
+        });
+    }
+
+    async function getPhotoRecord(id) {
+      if (!db) return fallbackRead('photos').find(photo => photo.id === id) || null;
+      return new Promise((resolve, reject) => {
+        const r = tx('photos').get(id);
+        r.onsuccess = () => resolve(r.result || null);
+        r.onerror = () => reject(r.error);
+      });
+    }
+
+    function loadExcelJs() {
+      if (window.ExcelJS) return Promise.resolve(window.ExcelJS);
+      if (window.__excelJsLoading) return window.__excelJsLoading;
+      window.__excelJsLoading = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        const timeout = setTimeout(() => {
+          script.remove();
+          reject(new Error('Excel export library timed out while loading'));
+        }, 15000);
+        script.src = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
+        script.async = true;
+        script.onload = () => { clearTimeout(timeout); resolve(window.ExcelJS); };
+        script.onerror = () => { clearTimeout(timeout); reject(new Error('Excel export library could not be loaded')); };
+        document.head.appendChild(script);
+      }).finally(() => { window.__excelJsLoading = null; });
+      return window.__excelJsLoading;
+    }
+
+    async function exportExcelWorkbook() {
+      try {
+        await loadExcelJs();
+      } catch (err) {
+        toast('Excel export needs internet access to load the workbook library. CSV/JSON still work offline.');
+        return;
+      }
+      const btn = $('#xlsxExportBtn');
+      const originalText = btn.textContent;
+      btn.textContent = 'Building Excel workbook...';
+      btn.disabled = true;
+      try {
+        const workbook = new ExcelJS.Workbook();
+        workbook.creator = 'Room Audit Web App';
+        workbook.created = new Date();
+        workbook.modified = new Date();
+        workbook.properties.date1904 = false;
+
+        const auditName = settings.auditName || 'Room Audit';
+        const fullCounts = countRooms(null);
+        const rows = roomExportRows();
+        const active = activeRecords();
+
+        const summary = workbook.addWorksheet('Summary');
+        summary.columns = [{ width: 24 }, { width: 32 }, { width: 20 }, { width: 20 }];
+        summary.mergeCells('A1:D1');
+        summary.getCell('A1').value = auditName;
+        summary.getCell('A1').font = { bold: true, size: 18, color: { argb: 'FF004548' } };
+        summary.getCell('A2').value = 'Exported At';
+        summary.getCell('B2').value = new Date().toLocaleString();
+        summary.getCell('A4').value = 'Full Audit';
+        summary.getCell('A4').font = { bold: true, color: { argb: 'FF004548' } };
+        [['Total Rooms', fullCounts.total], ['Audited', fullCounts.visited], ['Remaining', fullCounts.remaining], ['Rooms with Photos', fullCounts.withPhotos], ['Doesn’t Exist', fullCounts.missing], ['Saved Records', active.length]].forEach((pair, idx) => {
+          const row = 5 + idx;
+          summary.getCell(`A${row}`).value = pair[0];
+          summary.getCell(`B${row}`).value = pair[1];
+        });
+        summary.getCell('D4').value = 'Device Totals';
+        summary.getCell('D4').font = { bold: true, color: { argb: 'FF004548' } };
+        deviceCountData().filter(item => item.count > 0).forEach((item, idx) => {
+          summary.getCell(`C${5+idx}`).value = item.device;
+          summary.getCell(`D${5+idx}`).value = item.count;
+        });
+        styleWorksheet(summary);
+
+        const audit = workbook.addWorksheet('Room Audit');
+        const auditColumns = [
+          { header: 'Room', key: 'room', width: 14 },
+          { header: 'Care Setting / Area', key: 'area', width: 24 },
+          { header: 'Status', key: 'status', width: 16 },
+          { header: 'Room Exists?', key: 'exists', width: 13 },
+          { header: 'Device Quantities', key: 'devices', width: 34 },
+          { header: 'Notes', key: 'notes', width: 42 },
+          { header: 'Photo Count', key: 'photoCount', width: 12 },
+          { header: 'Updated At', key: 'updatedAt', width: 22 },
+          { header: 'Photo 1', key: 'photo1', width: 18 },
+          { header: 'Photo 2', key: 'photo2', width: 18 },
+          { header: 'Photo 3', key: 'photo3', width: 18 }
+        ];
+        setSheetColumns(audit, auditColumns);
+        rows.forEach(row => {
+          audit.addRow({
+            room: row.room,
+            area: row.area,
+            status: row.status,
+            exists: row.exists,
+            devices: row.devices,
+            notes: row.notes,
+            photoCount: row.photoCount,
+            updatedAt: row.updatedAt
+          });
+          const excelRow = audit.lastRow;
+          excelRow.height = row.photoCount ? 82 : 28;
+          const statusCell = excelRow.getCell(3);
+          if (row.status === "Doesn't exist") statusCell.fill = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFFFE1E1' } };
+          else if (row.status !== 'Not started') statusCell.fill = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFEAF7EE' } };
+        });
+        styleWorksheet(audit);
+
+        for (let i = 0; i < rows.length; i++) {
+          const record = rows[i].record;
+          if (!record?.photoIds?.length) continue;
+          for (let pIndex = 0; pIndex < Math.min(3, record.photoIds.length); pIndex++) {
+            const photo = await getPhotoRecord(record.photoIds[pIndex]);
+            if (!photo?.blob) continue;
+            const base64 = await blobToDataUrl(photo.blob);
+            const imageId = workbook.addImage({ base64, extension: 'jpeg' });
+            const rowNum = i + 2;
+            const colNum = 8 + pIndex; // zero-based I/K in ExcelJS anchors
+            audit.addImage(imageId, {
+              tl: { col: colNum + 0.08, row: rowNum - 1 + 0.12 },
+              ext: { width: 92, height: 68 },
+              editAs: 'oneCell'
+            });
+          }
+        }
+
+        const areas = workbook.addWorksheet('Areas');
+        setSheetColumns(areas, [
+          { header: 'Care Setting / Area', key: 'name', width: 28 },
+          { header: 'Start Room', key: 'startRoom', width: 12 },
+          { header: 'End Room', key: 'endRoom', width: 12 },
+          { header: 'Prefix', key: 'prefix', width: 12 },
+          { header: 'Suffix', key: 'suffix', width: 12 },
+          { header: 'Split All Semi-Private?', key: 'split', width: 24 },
+          { header: 'Room Count', key: 'count', width: 14 },
+          { header: 'Audited', key: 'audited', width: 12 },
+          { header: 'Remaining', key: 'remaining', width: 12 },
+          { header: 'Doesn’t Exist', key: 'missing', width: 14 }
+        ]);
+        (settings.careAreas || []).forEach(area => {
+          const c = countRooms(area.name);
+          areas.addRow({ name: area.name, startRoom: area.startRoom, endRoom: area.endRoom, prefix: area.prefix || '', suffix: area.suffix || '', split: area.splitAllSemiPrivate ? 'Yes' : 'No', count: c.total, audited: c.visited, remaining: c.remaining, missing: c.missing });
+        });
+        styleWorksheet(areas);
+
+        const devices = workbook.addWorksheet('Device Summary');
+        setSheetColumns(devices, [
+          { header: 'Device / Flag', key: 'device', width: 34 },
+          { header: 'Total Quantity', key: 'count', width: 14 },
+          { header: 'Rooms', key: 'rooms', width: 48 }
+        ]);
+        deviceCountData().forEach(item => {
+          devices.addRow({ device: item.device, count: item.count, rooms: item.rooms.join(', ') });
+        });
+        styleWorksheet(devices);
+
+        const manifest = workbook.addWorksheet('Photo Manifest');
+        setSheetColumns(manifest, [
+          { header: 'Room', key: 'room', width: 14 },
+          { header: 'Care Setting / Area', key: 'area', width: 24 },
+          { header: 'Photo #', key: 'photoNum', width: 10 },
+          { header: 'Photo ID', key: 'photoId', width: 40 },
+          { header: 'Suggested Filename', key: 'filename', width: 38 },
+          { header: 'Captured At', key: 'createdAt', width: 24 }
+        ]);
+        for (const r of active) {
+          for (let i = 0; i < (r.photoIds || []).length; i++) {
+            const photo = await getPhotoRecord(r.photoIds[i]);
+            manifest.addRow({ room: r.room, area: r.wing, photoNum: i + 1, photoId: r.photoIds[i], filename: `room-${String(r.room).replace(/\s+/g,'-')}-photo-${i+1}.jpg`, createdAt: photo?.createdAt ? new Date(photo.createdAt).toLocaleString() : '' });
+          }
+        }
+        styleWorksheet(manifest);
+
+        workbook.eachSheet(ws => {
+          ws.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+          ws.properties.defaultRowHeight = 20;
+        });
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        const cleanName = auditName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'room-audit';
+        workbookDownload(buffer, `${cleanName}-export.xlsx`);
+        toast('Excel workbook exported');
+      } catch (err) {
+        console.error(err);
+        toast('Excel export failed. Try CSV or fewer photos.');
+      } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }
+    }
+
+    function exportCsv() {
+      const rows = [['Room','Care Setting / Area','Room Exists?','Device Quantities','Notes','Photo Count','Photo IDs','Updated At']];
+      activeRecords().forEach(r => rows.push([r.room, r.wing, r.roomDoesNotExist ? 'No' : 'Yes', deviceListFromCounts(deviceCountsFromRecord(r)).join('; '), r.notes, (r.photoIds||[]).length, (r.photoIds||[]).join('; '), r.updatedAt]));
+      download('room-audit.csv', rows.map(row => row.map(csvEscape).join(',')).join('\n'), 'text/csv');
+    }
+
+    function exportPhotoManifestCsv() {
+      const rows = [['Room','Photo ID','Suggested Filename']];
+      activeRecords().forEach(r => (r.photoIds||[]).forEach((id, i) => rows.push([r.room, id, `room-${r.room}-photo-${i+1}.jpg`])));
+      download('room-audit-photo-manifest.csv', rows.map(row => row.map(csvEscape).join(',')).join('\n'), 'text/csv');
+    }
+
+    async function exportJson() {
+      const photos = await getAll('photos');
+      const manifest = {
+        exportedAt: new Date().toISOString(),
+        note: 'Photo blobs are stored locally in IndexedDB in this prototype. A production export would convert these to files in a ZIP or embed thumbnails in XLSX.',
+        records: activeRecords(),
+        photoCount: photos.length
+      };
+      download('room-audit-backup.json', JSON.stringify(manifest, null, 2), 'application/json');
+    }
+
+    async function clearAllData() {
+      const activeCount = activeRecords().length;
+      const firstConfirm = confirm(
+        `Clear local audit data from this device?\n\nThis will permanently remove ${activeCount} saved room record${activeCount === 1 ? '' : 's'} and all locally stored photos from this browser. Make sure you have exported an Excel workbook or JSON backup first.`
+      );
+      if (!firstConfirm) return;
+      const typed = prompt('Type CLEAR to permanently delete the local audit records and photos from this device.');
+      if (typed !== 'CLEAR') {
+        toast('Clear canceled');
+        return;
+      }
+      await clearStore('records');
+      await clearStore('photos');
+      await loadRecords();
+      render();
+      toast('Local audit data cleared');
+    }
+
+    function toast(msg) {
+      $('#toast').textContent = msg;
+      $('#toast').classList.add('show');
+      setTimeout(() => $('#toast').classList.remove('show'), 1800);
+    }
+
+    $$('.nav button').forEach(btn => btn.addEventListener('click', () => { tab = btn.dataset.tab; render(); }));
+
+    (async function init() {
+      try {
+        db = await openDb();
+      } catch (err) {
+        console.warn('IndexedDB unavailable; using localStorage fallback.', err);
+        db = null;
+      }
+      await loadRecords();
+      render();
+    })();
+  </script>
+</body>
+</html>
